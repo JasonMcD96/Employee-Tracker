@@ -9,11 +9,10 @@ class Prompts {
                     'View All Employees',
                     'View All Departments',
                     'View All Roles',
-                    'View By Manager',
                     'Add Employee',
                     'Add Department',
                     'Add New Role',
-                    'Update Employee Role',
+                    'Update Employee Role'
                 ]
             },
             {
