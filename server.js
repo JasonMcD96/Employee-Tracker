@@ -3,6 +3,7 @@ const mysql = require("mysql")
 const util = require("util")
 const cTable = require("console.table")
 const Prompts = require("./objectfiles/inquirerPrompts")
+const SQLstatments = require("./objectfiles/mysqlStatements")
 
 // Create connection paremeters with the database
 let connection = mysql.createConnection({
@@ -26,6 +27,7 @@ let departmentsArray = [];
 let rolesArray = [];
 let employeeArray = [];
 const promptStorage = new Prompts; // Used to cut down bulk of server.js slightly
+const sqlStorage = new SQLstatments; //Used to cut down on bulk of server.js by holding statement text
 
 // mainPrompt prompts the user with the main menu of the app
 const mainPrompt = async (inputs = []) => {
@@ -36,18 +38,7 @@ const mainPrompt = async (inputs = []) => {
 
 // getAllEmployees is the actual mysql code to select from the database all employees
 let getAllEmployees = () => {
-
-    return connection.query(`select a.id, 
-    a.first_name,
-    a.last_name,
-    role.title,
-    department.name,
-    role.salary,
-    concat(b.first_name, ' ', b.last_name) as manager
-    from employee a inner join role ON a.role_id = role.id
-    inner join department ON role.department_id = department.id
-    left join employee b on a.manager_id = b.id;`)
-
+    return connection.query(sqlStorage.selectAllEmployees)
 }
 
 // Intermediary function to call getAllEmployees with await, helps handle async issues with inquirer + mysql
@@ -59,7 +50,7 @@ let viewEmployees = async () => {
 
 // getAllDepartments is mysql code to get all departments in the db
 let getAllDepartments = () => {
-    return connection.query(`select * from department;`)
+    return connection.query(sqlStorage.selectAllDepartments)
 }
 
 // Intermediary function to call getAllDepartments with await, helps handle async issues with inquirer + mysql
@@ -71,17 +62,13 @@ let viewDepartments = async () => {
 
 // getAllRoles is mysql code to get all roles in the db
 let getAllRoles = () => {
-    return connection.query(`select role.id,
-    role.title,
-    role.salary,
-    department.name as department
-    from role inner join department on role.department_id = department.id;`)
+    return connection.query(sqlStorage.selectAllRoles)
 }
 
 // another version to get rolls, 'RAW' because getAllRoles was a different format that what
 //  needed elsewhere in the program
 let getRolesRaw = () => {
-    return connection.query(`select * from role;`)
+    return connection.query(sqlStorage.selectRolesRaw)
 }
 
 // Intermediary function to call getAllRoles with await, helps handle async issues with inquirer + mysql
@@ -93,7 +80,7 @@ let viewRoles = async () => {
 
 // inserts a new department into the database
 let insertDepartment = (department) => {
-    return connection.query(`insert into department (name) values(?)`, department)
+    return connection.query(sqlStorage.insertNewDepartment, department)
 }
 
 // Intermediary function to call insertDepartment with await, helps handle async issues with inquirer + mysql
@@ -104,8 +91,7 @@ let addDepartment = async (department) => {
 
 // inserts a new role into the database
 let insertRole = (role, salary, id) => {
-    connection.query(`insert into role (title, salary, department_id)
-    values(?,?,?)`, [role, salary, id])
+    connection.query(sqlStorage.insertNewRole, [role, salary, id])
 }
 
 // Intermediary function to call insertDepartment with await, helps handle async issues with inquirer + mysql
@@ -113,14 +99,6 @@ let addRole = async (role) => {
 
     let departments = await getAllDepartments(); // need IDs of departments
     formatGlobalDepartments(departments)
-    // departmentsArray = [];
-    // departments.forEach(element => { //creates a local save of what is in the db, primarily for IDs
-    //     let newObj = {
-    //         id: element.id,
-    //         name: element.name
-    //     }
-    //     departmentsArray.push(newObj)
-    // });
 
     let roleAnswers = await promptForRoles();
 
@@ -197,8 +175,7 @@ let promptForEmployee = async () => {
 
 // inserts new employee into the DB
 let insertEmployee = (first, last, id, manager) => {
-    connection.query(`insert into employee (first_name, last_name, role_id, manager_id)
-    values(?,?,?,?);`, [first, last, id, manager])
+    connection.query(sqlStorage.insertNewEmployee, [first, last, id, manager])
 }
 
 // Intermediary function to call sql code with await, helps handle async issues with inquirer + mysql
@@ -281,6 +258,7 @@ let sendUpdateRequest = (id, role) => {
 }
 // Intermediary function to call mysql code with await, helps handle async issues with inquirer + mysql
 let updateEmployee = async () => {
+
     // preFetch roles to have IDs
     let roles = await getRolesRaw();
     formatGlobalRolesArray(roles);
@@ -289,8 +267,10 @@ let updateEmployee = async () => {
     formatGlobalEmployees(employees)
 
     let answers = await promptEmployeeUpdate()
+
     // get employee ID  of employee to update
     let employeeId = (employeeArray.filter(object => object.firstName + ' ' + object.lastName === answers.employeeToUpdate))[0].id
+   
     // get role ID of role to change to
     let roleId = (rolesArray.filter(object => object.title === answers.roleToChangeTo))[0].id;
     await sendUpdateRequest(employeeId, roleId)
@@ -376,4 +356,5 @@ const main = async () => {
         }
     })
 }
+
 main();
