@@ -2,6 +2,7 @@ const inquirer = require("inquirer")
 const mysql = require("mysql")
 const util = require("util")
 const cTable = require("console.table")
+const Prompts = require("./inquirerPrompts")
 
 let connection = mysql.createConnection({
     host: "localhost",
@@ -20,43 +21,11 @@ connection.query = util.promisify(connection.query);
 let departmentsArray = [];
 let rolesArray = [];
 let employeeArray = [];
+const prompts = new Prompts;
 
 const mainPrompt = async (inputs = []) => {
-    const prompts = [
-        {
-            type: 'list',
-            name: 'action',
-            message: 'What would you like to do?',
-            choices: [
-                'View All Employees',
-                'View All Departments',
-                'View All Roles',
-                'View By Manager',
-                'Add Employee',
-                'Add Department',
-                'Add New Role',
-                'Update Employee Role',
-                'Update Employee',
-                'Update Employee Manager',
-                'Remove Employee',
-                'Remove Role'
-            ]
-        },
-        {
-            type: 'input',
-            name: 'newDepartment',
-            message: 'What is the name of the new department?',
-            when: (answers) => answers.action === "Add Department"
-        },
-        {
-            type: 'input',
-            name: 'newRole',
-            message: 'What is the name of the new role?',
-            when: (answers) => answers.action === "Add New Role"
-        }
-    ];
 
-    const answers = await inquirer.prompt(prompts)
+    const answers = await inquirer.prompt(prompts.mainPrompt)
     return answers;
 }
 
@@ -148,9 +117,9 @@ let addRole = async (role) => {
 }
 
 let promptForRoles = async () => {
-    let roleChoices = []
+    let departmentChoices = [] //list of departments to choose from
     departmentsArray.forEach(element => {
-        roleChoices.push(element.name)
+        departmentChoices.push(element.name)
     })
     // console.log('Role choices: ', roleChoices)
     const prompts = [
@@ -158,7 +127,7 @@ let promptForRoles = async () => {
             type: 'list',
             name: 'newRoleDepartment',
             message: 'What department is this role for?',
-            choices: roleChoices
+            choices: departmentChoices
         }, {
             type: 'number',
             name: 'salary',
@@ -171,12 +140,12 @@ let promptForRoles = async () => {
 
 // prompting for adding an employee 
 let promptForEmployee = async () => {
-    let employeeChoices = [] //array with role titles for the employee to have
+    let roleChoices = [] //list of roles for the employee can have
     rolesArray.forEach(element => {
-        employeeChoices.push(element.title)
+        roleChoices.push(element.title)
     })
 
-    let managerChoices = []
+    let managerChoices = [] //List of employees to choose from to make a manager of new employee
     employeeArray.forEach(element => {
         managerChoices.push(`${element.firstName} ${element.lastName}`)
     })
@@ -197,7 +166,7 @@ let promptForEmployee = async () => {
             type: 'list',
             name: 'employeeRole',
             message: 'What role will this person have?',
-            choices: employeeChoices
+            choices: roleChoices
         },
         {
             type: 'list',
@@ -207,6 +176,7 @@ let promptForEmployee = async () => {
         }
 
     ]
+
     const answers = await inquirer.prompt(prompts)
     return answers
 }
@@ -217,12 +187,17 @@ let insertEmployee = (first, last, id, manager) => {
 }
 
 let addEmployee = async () => {
-
     let roles = await getRollsRaw();
     rolesArray = [];
 
     roles.forEach(element => {
-        let newObj = {id: element.id, title: element.title, salary: element.salary, departmentID: element.department_id}
+
+        let newObj = {
+            id: element.id,
+            title: element.title,
+            salary: element.salary,
+            departmentID: element.department_id
+        }
         rolesArray.push(newObj)
     })
 
@@ -230,86 +205,130 @@ let addEmployee = async () => {
     employeeArray = [];
 
     employees.forEach(element => {
-        let newObj = {id: element.id, firstName: element.first_name, lastName: element.last_name}
+        let newObj = {
+            id: element.id,
+            firstName: element.first_name,
+            lastName: element.last_name
+        }
+
         employeeArray.push(newObj)
     })
-    console.log('Employees: ', employeeArray)
+
     let answers = await promptForEmployee();
     let roleId = (rolesArray.filter(object => object.title === answers.employeeRole))[0].id;
 
     let managerid;
-    // console.log('Role ID: ', roleId)
-    if (answers.managerName === 'none'){
+    if (answers.managerName === 'none') {
         managerid = null;
     } else {
         managerid = (employeeArray.filter(object => object.firstName + ' ' + object.lastName === answers.managerName))[0].id
     }
-    console.log('Manager: ', managerid)
+
     await insertEmployee(answers.firstName, answers.lastName, roleId, managerid)
     main();
 }
 
+let promptEmployeeUpdate = async () => {
+    let roleChoices = [] //array with role titles for the employee to have
+    rolesArray.forEach(element => {
+        roleChoices.push(element.title)
+    })
 
+    let employeeChoices = []
+    employeeArray.forEach(element => {
+        employeeChoices.push(`${element.firstName} ${element.lastName}`)
+    })
+
+    const prompts = [
+        {
+            type: 'list',
+            name: 'employeeToUpdate',
+            message: "Update the role of which employee?",
+            choices: employeeChoices
+        },
+        {
+            type: 'list',
+            name: 'roleToChangeTo',
+            message: "What role will they change to?",
+            choices: roleChoices
+        }
+
+    ]
+
+    const answers = await inquirer.prompt(prompts)
+    return answers
+}
+
+let sendUpdateRequest = (id, role) => {
+    connection.query(`update employee set role_id=? where id=?`, [role, id])
+}
+
+let updateEmployee = async () => {
+    let roles = await getRollsRaw();
+    rolesArray = [];
+
+    roles.forEach(element => {
+        let newObj = {
+            id: element.id,
+            title: element.title,
+            salary: element.salary,
+            departmentID: element.department_id
+        }
+
+        rolesArray.push(newObj)
+    })
+
+    let employees = await getAllEmployees();
+    employeeArray = [];
+
+    employees.forEach(element => {
+        let newObj = {
+            id: element.id,
+            firstName: element.first_name,
+            lastName: element.last_name
+        }
+        employeeArray.push(newObj)
+    })
+
+    let answers = await promptEmployeeUpdate()
+    let employeeId = (employeeArray.filter(object => object.firstName + ' ' + object.lastName === answers.employeeToUpdate))[0].id
+    let roleId = (rolesArray.filter(object => object.title === answers.roleToChangeTo))[0].id;
+    await sendUpdateRequest(employeeId, roleId)
+}
 
 const main = async () => {
 
     let answers = await mainPrompt().then(answers => {
 
         switch (answers.action) {
-            case "View All Employees":  // Min
+            case "View All Employees":
                 viewEmployees();
                 break;
 
-            case "View All Departments": // Min
+            case "View All Departments":
                 viewDepartments();
                 break;
 
-            case "View All Roles": // Min
+            case "View All Roles":
                 viewRoles();
                 break;
-            case "Add Department": //Min
+            case "Add Department":
                 addDepartment(answers.newDepartment);
                 break;
 
-            case "Add New Role": //min
-                addRole(answers.newRole); // need IDs
+            case "Add New Role":
+                addRole(answers.newRole);
                 break;
 
-            case "Add Employee": // min
+            case "Add Employee":
                 addEmployee();
                 break;
 
 
-            case "Update Employee Role": // Min
-
+            case "Update Employee Role":
+                updateEmployee();
                 break;
 
-            case "View By Manager":
-
-                break;
-
-
-            case "View By Department":
-
-                break;
-
-
-            case "Add Employee":
-
-                break;
-
-            case "Remove Employee":
-
-                break;
-
-            case "Update Employee Manager":
-
-                break;
-
-
-            case "Remove Role":
-
-                break;
 
             default:
                 break;
