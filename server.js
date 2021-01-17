@@ -25,14 +25,14 @@ const responseCollection = async (inputs = []) => {
             message: 'What would you like to do?',
             choices: [
                 'View All Employees',
-                'View By Department',
+                'View All Departments',
+                'View All Roles',
+                'Update Employee Role',
                 'View By Manager',
                 'Add Employee',
                 'Remove Employee',
                 'Update Employee',
-                'Update Employee Role',
                 'Update Employee Manager',
-                'View All Roles',
                 'Add New Role',
                 'Remove Role'
             ]
@@ -45,7 +45,7 @@ const responseCollection = async (inputs = []) => {
 
 let getAllEmployees = () => {
     // Get all employees and their information from the database
-    console.log("--- Accessing all employees ---")
+    console.log("--- Accessing all employees --- \n\n")
 
     return connection.query(`select a.id, 
     a.first_name,
@@ -60,16 +60,27 @@ let getAllEmployees = () => {
 
 }
 
+
 let viewEmployees = async () => {
     let employees = await getAllEmployees()
 
     // Print results
     console.table(employees)
-
     // console.log(employees)
     main() // go back to start
 
     // await responseCollection(); // other prompts pertaining what they wanted depending on the context of the situation
+}
+
+let getAllDepartments = () => {
+    console.log("--- Accessing all Departments --- \n\n")
+    return connection.query(`select * from department;`)
+
+}
+let viewDepartments = async () => {
+    let departments = await getAllDepartments();
+    console.table(departments)
+    main(); // go back to start
 }
 
 const main = async () => {
@@ -77,61 +88,61 @@ const main = async () => {
     // viewEmployees();
 
     //  while (true) {
-        let answers = await responseCollection().then(answers => {
+    let answers = await responseCollection().then(answers => {
 
-            switch (answers.action) {
-                case "View All Employees":  // Min
-                    viewEmployees();
-                    break;
+        switch (answers.action) {
+            case "View All Employees":  // Min
+                viewEmployees();
+                break;
 
-                case "View By Department": // Min
+            case "View All Departments": // Min
+                viewDepartments();
+                break;
 
-                    break;
+            case "View All Roles": // Min
 
-                case "View By Manager": // Min
+                break;
 
-                    break;
+            case "Update Employee Role": // Min
 
-                case "View All Roles": // Min
+                break;
+            case "View By Manager":
 
-                    break;
+                break;
 
-                case "Update Employee Role": // Min
 
-                    break;
+            case "View By Department":
 
-                case "View Departments": // Min
+                break;
 
-                    break;
+            case "Add Employee":
 
-                case "Add Employee":
+                break;
 
-                    break;
+            case "Add Employee":
 
-                case "Add Employee":
+                break;
 
-                    break;
+            case "Remove Employee":
 
-                case "Remove Employee":
+                break;
 
-                    break;
+            case "Update Employee Manager":
 
-                case "Update Employee Manager":
+                break;
 
-                    break;
+            case "Add New Role":
 
-                case "Add New Role":
+                break;
 
-                    break;
+            case "Remove Role":
 
-                case "Remove Role":
+                break;
 
-                    break;
-
-                default:
-                    break;
-            }
-        })
+            default:
+                break;
+        }
+    })
     //  }
 }
 
