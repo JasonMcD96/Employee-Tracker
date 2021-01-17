@@ -4,6 +4,7 @@ const util = require("util")
 const cTable = require("console.table")
 const Prompts = require("./objectfiles/inquirerPrompts")
 const SQLstatments = require("./objectfiles/mysqlStatements")
+const cfonts = require("cfonts")
 
 // Create connection paremeters with the database
 let connection = mysql.createConnection({
@@ -335,5 +336,21 @@ const main = async () => {
         }
     })
 }
+
+cfonts.say('Employee|Tracker', {
+	font: 'huge',              // define the font face
+	align: 'left',              // define text alignment
+	colors: ['white', 'cyan'],         // define all colors
+	background: 'transparent',  // define the background color, you can also use `backgroundColor` here as key
+	letterSpacing: 3,           // define letter spacing
+	lineHeight: 1,              // define the line height
+	space: true,                // define if the output text should have empty lines on top and on the bottom
+	maxLength: '0',             // define how many character can be on one line
+	gradient: false,            // define your two gradient colors
+	independentGradient: false, // define if you want to recalculate the gradient for each new line
+	transitionGradient: false,  // define if this is a transition between colors directly
+	env: 'node'                 // define the environment CFonts is being executed in
+});
+
 
 main();
