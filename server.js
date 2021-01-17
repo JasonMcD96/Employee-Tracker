@@ -1,6 +1,7 @@
 const inquirer = require("inquirer")
 const mysql = require("mysql")
 const util = require("util")
+const cTable = require("console.table")
 
 let connection = mysql.createConnection({
     host: "localhost",
@@ -15,7 +16,6 @@ connection.connect(function (err) {
 })
 
 connection.query = util.promisify(connection.query);
-
 
 const responseCollection = async (inputs = []) => {
     const prompts = [
@@ -53,7 +53,7 @@ let getAllEmployees = () => {
     role.title,
     department.name,
     role.salary,
-    concat(b.first_name, ' ', b.last_name)
+    concat(b.first_name, ' ', b.last_name) as manager
     from employee a inner join role ON a.role_id = role.id
     inner join department ON role.department_id = department.id
     left join employee b on a.manager_id = b.id;`)
@@ -62,10 +62,14 @@ let getAllEmployees = () => {
 
 let viewEmployees = async () => {
     let employees = await getAllEmployees()
-    console.log(employees)
+
+    // Print results
+    console.table(employees)
+
+    // console.log(employees)
+    main() // go back to start
 
     // await responseCollection(); // other prompts pertaining what they wanted depending on the context of the situation
-    main()
 }
 
 const main = async () => {
