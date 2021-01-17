@@ -182,30 +182,9 @@ let insertEmployee = (first, last, id, manager) => {
 let addEmployee = async () => {
     let roles = await getRolesRaw();
     formatGlobalRolesArray(roles)
-    // rolesArray = [];
-    // roles.forEach(element => {
-    //     let newObj = {
-    //         id: element.id,
-    //         title: element.title,
-    //         salary: element.salary,
-    //         departmentID: element.department_id
-    //     }
-    //     rolesArray.push(newObj)
-    // })
 
     let employees = await getAllEmployees();
     formatGlobalEmployees(employees)
-    // employeeArray = [];
-
-    // employees.forEach(element => {
-    //     let newObj = {
-    //         id: element.id,
-    //         firstName: element.first_name,
-    //         lastName: element.last_name
-    //     }
-
-    //     employeeArray.push(newObj)
-    // })
 
     let answers = await promptForEmployee();
     let roleId = (rolesArray.filter(object => object.title === answers.employeeRole))[0].id;
@@ -320,7 +299,7 @@ let formatGlobalDepartments = (departments) =>{
 
 const main = async () => {
 
-    let answers = await mainPrompt().then(answers => {
+    await mainPrompt().then(answers => {
 
         switch (answers.action) {
             case "View All Employees":
