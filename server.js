@@ -17,7 +17,11 @@ connection.connect(function (err) {
 
 connection.query = util.promisify(connection.query);
 
-const responseCollection = async (inputs = []) => {
+let departmentsArray = [];
+let rolesArray = [];
+let employeeArray = [];
+
+const mainPrompt = async (inputs = []) => {
     const prompts = [
         {
             type: 'list',
@@ -27,16 +31,29 @@ const responseCollection = async (inputs = []) => {
                 'View All Employees',
                 'View All Departments',
                 'View All Roles',
-                'Update Employee Role',
                 'View By Manager',
                 'Add Employee',
-                'Remove Employee',
+                'Add Department',
+                'Add New Role',
+                'Update Employee Role',
                 'Update Employee',
                 'Update Employee Manager',
-                'Add New Role',
+                'Remove Employee',
                 'Remove Role'
             ]
         },
+        {
+            type: 'input',
+            name: 'newDepartment',
+            message: 'What is the name of the new department?',
+            when: (answers) => answers.action === "Add Department"
+        },
+        {
+            type: 'input',
+            name: 'newRole',
+            message: 'What is the name of the new role?',
+            when: (answers) => answers.action === "Add New Role"
+        }
     ];
 
     const answers = await inquirer.prompt(prompts)
@@ -81,8 +98,13 @@ let getAllRoles = () => {
     console.log("--- Accessing all Roles --- \n\n")
     return connection.query(`select role.id,
     role.title,
+    role.salary,
     department.name as department
     from role inner join department on role.department_id = department.id;`)
+}
+
+let getRollsRaw = () => {
+    return connection.query(`select * from role;`)
 }
 
 let viewRoles = async () => {
@@ -91,9 +113,147 @@ let viewRoles = async () => {
     main(); // go back to start
 }
 
+let insertDepartment = (department) => {
+    console.log('--- Attempting to insert new data ---')
+    console.log('Department> ', department)
+    return connection.query(`insert into department (name) values(?)`, department)
+}
+
+let addDepartment = async (department) => {
+    let result = await insertDepartment(department);
+    main() // go back to start
+}
+
+
+let insertRole = (role, salary, id) => {
+    connection.query(`insert into role (title, salary, department_id)
+    values(?,?,?)`, [role, salary, id])
+}
+
+let addRole = async (role) => {
+    let departments = await getAllDepartments(); // need IDs of departments
+    departmentsArray = [];
+
+    departments.forEach(element => {
+        let newObj = { id: element.id, name: element.name }
+        departmentsArray.push(newObj)
+    });
+
+    let roleAnswers = await promptForRoles();
+    // console.log(`${role} of salary ${roleAnswers.salary} linked to department: `, roleAnswers.newRoleDepartment)
+    let id = (departmentsArray.filter(object => object.name === roleAnswers.newRoleDepartment))[0].id
+    await insertRole(role, roleAnswers.salary, id)
+
+    main(); // go back to start
+}
+
+let promptForRoles = async () => {
+    let roleChoices = []
+    departmentsArray.forEach(element => {
+        roleChoices.push(element.name)
+    })
+    // console.log('Role choices: ', roleChoices)
+    const prompts = [
+        {
+            type: 'list',
+            name: 'newRoleDepartment',
+            message: 'What department is this role for?',
+            choices: roleChoices
+        }, {
+            type: 'number',
+            name: 'salary',
+            message: 'What is the salary?'
+        }
+    ]
+    const answers = await inquirer.prompt(prompts)
+    return answers;
+}
+
+// prompting for adding an employee 
+let promptForEmployee = async () => {
+    let employeeChoices = [] //array with role titles for the employee to have
+    rolesArray.forEach(element => {
+        employeeChoices.push(element.title)
+    })
+
+    let managerChoices = []
+    employeeArray.forEach(element => {
+        managerChoices.push(`${element.firstName} ${element.lastName}`)
+    })
+    managerChoices.push('none')
+
+    const prompts = [
+        {
+            type: 'input',
+            name: 'firstName',
+            message: "What is the new employee's first name?"
+        },
+        {
+            type: 'input',
+            name: 'lastName',
+            message: "Last name?"
+        },
+        {
+            type: 'list',
+            name: 'employeeRole',
+            message: 'What role will this person have?',
+            choices: employeeChoices
+        },
+        {
+            type: 'list',
+            name: 'managerName',
+            message: 'Who is their manager?',
+            choices: managerChoices
+        }
+
+    ]
+    const answers = await inquirer.prompt(prompts)
+    return answers
+}
+
+let insertEmployee = (first, last, id, manager) => {
+    connection.query(`insert into employee (first_name, last_name, role_id, manager_id)
+    values(?,?,?,?);`, [first, last, id, manager])
+}
+
+let addEmployee = async () => {
+
+    let roles = await getRollsRaw();
+    rolesArray = [];
+
+    roles.forEach(element => {
+        let newObj = {id: element.id, title: element.title, salary: element.salary, departmentID: element.department_id}
+        rolesArray.push(newObj)
+    })
+
+    let employees = await getAllEmployees();
+    employeeArray = [];
+
+    employees.forEach(element => {
+        let newObj = {id: element.id, firstName: element.first_name, lastName: element.last_name}
+        employeeArray.push(newObj)
+    })
+    console.log('Employees: ', employeeArray)
+    let answers = await promptForEmployee();
+    let roleId = (rolesArray.filter(object => object.title === answers.employeeRole))[0].id;
+
+    let managerid;
+    // console.log('Role ID: ', roleId)
+    if (answers.managerName === 'none'){
+        managerid = null;
+    } else {
+        managerid = (employeeArray.filter(object => object.firstName + ' ' + object.lastName === answers.managerName))[0].id
+    }
+    console.log('Manager: ', managerid)
+    await insertEmployee(answers.firstName, answers.lastName, roleId, managerid)
+    main();
+}
+
+
+
 const main = async () => {
 
-    let answers = await responseCollection().then(answers => {
+    let answers = await mainPrompt().then(answers => {
 
         switch (answers.action) {
             case "View All Employees":  // Min
@@ -107,21 +267,23 @@ const main = async () => {
             case "View All Roles": // Min
                 viewRoles();
                 break;
-            case "Add New Role": //min
+            case "Add Department": //Min
+                addDepartment(answers.newDepartment);
+                break;
 
+            case "Add New Role": //min
+                addRole(answers.newRole); // need IDs
                 break;
 
             case "Add Employee": // min
-
+                addEmployee();
                 break;
 
-            case "Add Department": //Min
-
-                break;
 
             case "Update Employee Role": // Min
 
                 break;
+
             case "View By Manager":
 
                 break;
@@ -154,5 +316,4 @@ const main = async () => {
         }
     })
 }
-
 main();
