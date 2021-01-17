@@ -60,16 +60,10 @@ let getAllEmployees = () => {
 
 }
 
-
 let viewEmployees = async () => {
     let employees = await getAllEmployees()
-
-    // Print results
     console.table(employees)
-    // console.log(employees)
     main() // go back to start
-
-    // await responseCollection(); // other prompts pertaining what they wanted depending on the context of the situation
 }
 
 let getAllDepartments = () => {
@@ -83,11 +77,22 @@ let viewDepartments = async () => {
     main(); // go back to start
 }
 
+let getAllRoles = () => {
+    console.log("--- Accessing all Roles --- \n\n")
+    return connection.query(`select role.id,
+    role.title,
+    department.name as department
+    from role inner join department on role.department_id = department.id;`)
+}
+
+let viewRoles = async () => {
+    let roles = await getAllRoles();
+    console.table(roles)
+    main(); // go back to start
+}
+
 const main = async () => {
 
-    // viewEmployees();
-
-    //  while (true) {
     let answers = await responseCollection().then(answers => {
 
         switch (answers.action) {
@@ -100,6 +105,17 @@ const main = async () => {
                 break;
 
             case "View All Roles": // Min
+                viewRoles();
+                break;
+            case "Add New Role": //min
+
+                break;
+
+            case "Add Employee": // min
+
+                break;
+
+            case "Add Department": //Min
 
                 break;
 
@@ -115,9 +131,6 @@ const main = async () => {
 
                 break;
 
-            case "Add Employee":
-
-                break;
 
             case "Add Employee":
 
@@ -131,9 +144,6 @@ const main = async () => {
 
                 break;
 
-            case "Add New Role":
-
-                break;
 
             case "Remove Role":
 
@@ -143,7 +153,6 @@ const main = async () => {
                 break;
         }
     })
-    //  }
 }
 
 main();
